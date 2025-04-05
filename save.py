@@ -1,0 +1,100 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c39dab61-7b5f-4bf1-a1db-ec8034889005",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# save_to_postgres.py\n",
+    "!pip install psycopg2-binary\n",
+    "\n",
+    "import psycopg2\n",
+    "from clean_data import clean_articles\n",
+    "from crawl_vnexpress import crawl_articles\n",
+    "\n",
+    "def create_table(conn):\n",
+    "    with conn.cursor() as cur:\n",
+    "        cur.execute(\"\"\"\n",
+    "        CREATE TABLE IF NOT EXISTS ai_articles (\n",
+    "            id SERIAL PRIMARY KEY,\n",
+    "            title TEXT,\n",
+    "            url TEXT UNIQUE,\n",
+    "            summary TEXT,\n",
+    "            time TIMESTAMP,\n",
+    "            author TEXT\n",
+    "        );\n",
+    "        \"\"\")\n",
+    "        conn.commit()\n",
+    "\n",
+    "def insert_article(conn, article):\n",
+    "    with conn.cursor() as cur:\n",
+    "        cur.execute(\"\"\"\n",
+    "            INSERT INTO ai_articles (title, url, summary, time, author)\n",
+    "            VALUES (%s, %s, %s, %s, %s)\n",
+    "            ON CONFLICT (url) DO NOTHING;\n",
+    "        \"\"\", (\n",
+    "            article['title'],\n",
+    "            article['url'],\n",
+    "            article['summary'],\n",
+    "            article['time'],\n",
+    "            article['author']\n",
+    "        ))\n",
+    "        conn.commit()\n",
+    "\n",
+    "def main():\n",
+    "    # Kết nối PostgreSQL\n",
+    "    conn = psycopg2.connect(\n",
+    "        host=\"localhost\",\n",
+    "        database=\"newsdb\",\n",
+    "        user=\"postgres\",\n",
+    "        password=\"postgres\"  # bạn thay đổi tùy config của mình\n",
+    "    )\n",
+    "\n",
+    "    create_table(conn)\n",
+    "\n",
+    "    raw_articles = crawl_articles()\n",
+    "    cleaned_articles = clean_articles(raw_articles)\n",
+    "\n",
+    "    for article in cleaned_articles:\n",
+    "        insert_article(conn, article)\n",
+    "\n",
+    "    conn.close()\n",
+    "    print(\"Đã lưu thành công vào PostgreSQL.\")\n",
+    "\n",
+    "if __name__ == \"__main__\":\n",
+    "    main()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ff3c20ef-f14c-4d5b-9e1c-c8d52af78f28",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python [conda env:base] *",
+   "language": "python",
+   "name": "conda-base-py"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
